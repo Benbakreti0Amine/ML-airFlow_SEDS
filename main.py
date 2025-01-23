@@ -13,59 +13,70 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report
 import numpy as np
 
-# Set the base directory relative to the current file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def load_and_split_data():
-    # Load Iris Dataset
+
     data = load_iris()
     X = data.data
     y = data.target
 
-    # Split into train and test sets
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.3, stratify=y, random_state=42
     )
 
-    # Save datasets to disk
     np.save(os.path.join(BASE_DIR, "X_train_raw.npy"), X_train)
     np.save(os.path.join(BASE_DIR, "y_train.npy"), y_train)
     np.save(os.path.join(BASE_DIR, "X_test_raw.npy"), X_test)
     np.save(os.path.join(BASE_DIR, "y_test.npy"), y_test)
 
-    print("Data loading and splitting complete.")
 
 def preprocess_data():
-    # Load raw data
+
     X_train = np.load(os.path.join(BASE_DIR, "X_train_raw.npy"))
     X_test = np.load(os.path.join(BASE_DIR, "X_test_raw.npy"))
 
-    # Standardize features
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # Save preprocessed data
     np.save(os.path.join(BASE_DIR, "X_train.npy"), X_train_scaled)
     np.save(os.path.join(BASE_DIR, "X_test.npy"), X_test_scaled)
 
     print("Data preprocessing complete.")
 
 def train_and_log_model():
-    # Load preprocessed data
+
     X_train = np.load(os.path.join(BASE_DIR, "X_train.npy"))
     y_train = np.load(os.path.join(BASE_DIR, "y_train.npy"))
     X_test = np.load(os.path.join(BASE_DIR, "X_test.npy"))
     y_test = np.load(os.path.join(BASE_DIR, "y_test.npy"))
 
-    # Define models
     models = [
-        ("K-Nearest Neighbors", KNeighborsClassifier(n_neighbors=5)),
-        ("Gradient Boosting", GradientBoostingClassifier(n_estimators=50, max_depth=3)),
-        ("Support Vector Machine", SVC(kernel='rbf', C=1, probability=True))
+    ("KNN-3", KNeighborsClassifier(n_neighbors=3)),
+    ("KNN-5", KNeighborsClassifier(n_neighbors=5)),
+    ("KNN-7", KNeighborsClassifier(n_neighbors=7)),
+    ("Gradient Boosting (50 Estimators)", GradientBoostingClassifier(n_estimators=50, max_depth=3)),
+    ("Gradient Boosting (100 Estimators)", GradientBoostingClassifier(n_estimators=100, max_depth=3)),
+    ("SVM (RBF Kernel)", SVC(kernel='rbf', C=1, probability=True)),
+    ("SVM (Linear Kernel)", SVC(kernel='linear', C=1, probability=True))
     ]
 
-    # Start MLflow experiment
+
+    # models = [
+    # ("K-Nearest Neighbors", KNeighborsClassifier(n_neighbors=5)),
+
+    # # Gradient Boosting Classifier
+    # # - n_estimators=50: The model will build 50 trees sequentially, with each tree correcting the previous one's errors.
+    # # - max_depth=3: Each tree will be limited to a maximum depth of 3 splits, controlling complexity.
+    # ("Gradient Boosting", GradientBoostingClassifier(n_estimators=50, max_depth=3)),
+
+    # # - kernel='rbf': Uses the Radial Basis Function (RBF) kernel for non-linear decision boundaries.
+    # # - C=1: Regularization parameter that balances the trade-off between model complexity and classification accuracy.
+    # # - probability=True: Enables probability estimates (useful for tasks requiring probability-based decisions).
+    # ("Support Vector Machine", SVC(kernel='rbf', C=1, probability=True))
+    # ]
+
     mlflow.set_tracking_uri("http://localhost:5000")
     if not mlflow.get_experiment_by_name("Iris-Classification"):
         mlflow.create_experiment(
@@ -79,20 +90,18 @@ def train_and_log_model():
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
 
-            # Classification report
             report = classification_report(y_test, y_pred, output_dict=True)
 
-            # Log parameters and metrics
+
             if hasattr(model, "get_params"):
                 mlflow.log_params(model.get_params())
             mlflow.log_metric("accuracy", report["accuracy"])
             mlflow.log_metric("f1-score_macro", report["macro avg"]["f1-score"])
 
-            # Log model
-            mlflow.sklearn.log_model(model, model_name)
+            mlflow.sklearn.log_model(model, model_name) # bech n9dro nkhdmo b model for predictions in the future.
 
 def monitor_model():
-    # Search for runs with accuracy less than 0.9
+
     bad_runs = mlflow.search_runs(
         experiment_names=["Iris-Classification"],
         filter_string="metrics.accuracy < 0.9",
@@ -107,7 +116,7 @@ def monitor_model():
         return 'done'
 
 def retrain_model():
-    # Retrain logic
+
     train_and_log_model()
 
 default_args = {
@@ -153,6 +162,5 @@ with DAG(
         python_callable=retrain_model,
     )
 
-    # Define task dependencies
     load_and_split_data_task >> preprocess_data_task >> train_and_log_model_task >> monitor_model_task
     monitor_model_task >> retrain_model_task
