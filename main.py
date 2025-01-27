@@ -63,20 +63,6 @@ def train_and_log_model():
     ]
 
 
-    # models = [
-    # ("K-Nearest Neighbors", KNeighborsClassifier(n_neighbors=5)),
-
-    # # Gradient Boosting Classifier
-    # # - n_estimators=50: The model will build 50 trees sequentially, with each tree correcting the previous one's errors.
-    # # - max_depth=3: Each tree will be limited to a maximum depth of 3 splits, controlling complexity.
-    # ("Gradient Boosting", GradientBoostingClassifier(n_estimators=50, max_depth=3)),
-
-    # # - kernel='rbf': Uses the Radial Basis Function (RBF) kernel for non-linear decision boundaries.
-    # # - C=1: Regularization parameter that balances the trade-off between model complexity and classification accuracy.
-    # # - probability=True: Enables probability estimates (useful for tasks requiring probability-based decisions).
-    # ("Support Vector Machine", SVC(kernel='rbf', C=1, probability=True))
-    # ]
-
     mlflow.set_tracking_uri("http://localhost:5000")
     if not mlflow.get_experiment_by_name("Iris-Classification"):
         mlflow.create_experiment(
